@@ -58,14 +58,6 @@ After reviewing `ic_review/<subj>_IC_topos.png`, create `ic_review/<subj>_ic_dec
 - Defaults (filters, thresholds, epoch window of -200 to 1000 ms, example ROI measures) are starting points; adjust them for your paradigm.
 - Data are assumed to be in microvolts with 3-D electrode coordinates available.
 
-## References
-
-- Bigdely-Shamlo et al. (2015). The PREP pipeline: standardized preprocessing for large-scale EEG analysis. *Frontiers in Neuroinformatics, 9*, 16.
-- Dimigen (2020). Optimizing the ICA-based removal of ocular EEG artifacts from free viewing experiments. *NeuroImage, 207*, 116117.
-- Luck et al. (2021). Standardized measurement error: a universal metric of data quality for averaged event-related potentials. *Psychophysiology, 58*(6), e13793.
-- Pion-Tonachini et al. (2019). ICLabel: an automated electroencephalographic independent component classifier, dataset, and website. *NeuroImage, 198*, 181–197.
-- Plöchl et al. (2012). Combining EEG and eye tracking: identification, characterization, and correction of eye movement artifacts in electroencephalographic data. *Frontiers in Human Neuroscience, 6*, 278.
-
 ## License
 
 MIT. Author: Karen C.L. Chan.

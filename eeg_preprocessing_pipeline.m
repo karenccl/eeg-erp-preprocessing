@@ -67,19 +67,6 @@
 %   cfg.nWorkers > 0), EEGLAB with ERPLAB, ICLabel and clean_rawdata plugins, plus the import
 %   plugin for your file format (Curry, BrainVision, BIOSIG).
 %   Developed with: MATLAB R2023b, EEGLAB 2023.1, ERPLAB 10.11, ICLabel 1.7.
-%
-% REFERENCES
-%   Bigdely-Shamlo et al. (2015). The PREP pipeline: standardized preprocessing for large-scale
-%     EEG analysis. Frontiers in Neuroinformatics, 9, 16.
-%   Dimigen (2020). Optimizing the ICA-based removal of ocular EEG artifacts from free viewing
-%     experiments. NeuroImage, 207, 116117.
-%   Luck et al. (2021). Standardized measurement error: a universal metric of data quality for
-%     averaged event-related potentials. Psychophysiology, 58(6), e13793.
-%   Pion-Tonachini et al. (2019). ICLabel: an automated electroencephalographic independent
-%     component classifier, dataset, and website. NeuroImage, 198, 181-197.
-%   Ploechl et al. (2012). Combining EEG and eye tracking: identification, characterization, and
-%     correction of eye movement artifacts in electroencephalographic data. Frontiers in Human
-%     Neuroscience, 6, 278.
 
 clear; clc;
 oldPool = gcp('nocreate');
