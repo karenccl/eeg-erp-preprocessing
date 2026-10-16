@@ -7,8 +7,7 @@
 %
 % -------------------------------------------------------------------------------------------
 % WHAT IT DOES
-%   0  Load recording (.cdt, .vhdr, .bdf/.edf, .set or custom loader); optional per-trial
-%      stimulus-onset correction from a CSV (cfg.onsetCorrection).
+%   0  Load recording (.cdt, .vhdr, .bdf/.edf, .set or custom loader).
 %   1  Keep bipolar EOG (not re-referenced, not in ICA, not used for trial rejection); drop other
 %      non-EEG channels.
 %   2  Saccade/blink detection on raw EOG (velocity-based, median-SD threshold). Skipped if no EOG.
@@ -116,18 +115,6 @@ cfg.mastoidChans  = {'M1', 'M2'};             % for the linked-mastoid output; i
 cfg.linkedMastoidOutput = true;
 cfg.roiChans      = {};                       % electrodes whose interpolation is flagged; {} = channels used in cfg.measures
 
-% ---- Onset correction (optional, setup-specific) ----------------------------------------
-% Use when presentation timing is measured per trial (e.g. a display-delay log) and the trigger
-% does not mark true stimulus onset. The CSV needs one row per stimulus event, with columns:
-%   acq_file  recording file name without extension (fallback match: Subject)
-%   Subject   subject ID as derived above
-%   trial     chronological trial number within the recording
-%   StimVal   event code; must equal the recording's event-code sequence, or the subject is excluded
-%   shift_ms  delay to ADD to the event latency (ms)
-%   source    (optional) free-text provenance
-cfg.onsetCorrection = false;
-cfg.onsetTablePath  = 'path/to/onset_correction_table.csv';
-
 % ---- Execution -------------------------------------------------------------------------
 cfg.nWorkers = 0;        % 0 = serial loop; N > 0 = parpool with N workers (Parallel Computing Toolbox)
 cfg.seed     = 1;
@@ -202,7 +189,6 @@ if ~isfolder(cfg.dataDir), error('cfg.dataDir not found: %s. Edit USER SETTINGS.
 if isempty(cfg.binDescriptorPath) && isempty(cfg.eventlistPath)
     error('Set cfg.binDescriptorPath (Binlister bin descriptor file) or cfg.eventlistPath (ERPLAB event list).');
 end
-if cfg.onsetCorrection && ~isfile(cfg.onsetTablePath), error('cfg.onsetTablePath not found: %s', cfg.onsetTablePath); end
 
 cfg.outputDir      = fullfile(cfg.outputRoot, 'epochs');
 cfg.outputDirERP   = fullfile(cfg.outputRoot, 'erp_avgref');
@@ -235,12 +221,6 @@ for d = dirsToMake
     if ~exist(d{1}, 'dir'), mkdir(d{1}); end
 end
 
-if cfg.onsetCorrection
-    opts = detectImportOptions(cfg.onsetTablePath, 'Delimiter', ',');
-    opts = setvartype(opts, intersect({'Subject', 'acq_file', 'source'}, opts.VariableNames), 'char');
-    cfg.onsetTbl = readtable(cfg.onsetTablePath, opts);
-    fprintf('Onset-correction table: %d rows, %d recordings.\n', height(cfg.onsetTbl), numel(unique(cfg.onsetTbl.acq_file)));
-end
 fprintf('Subjects to process: %d\n', numel(files));
 
 %% MAIN LOOP
@@ -284,31 +264,22 @@ fprintf('\nDone. QC logs: %s\nIC review: %s\nTrial-level: %s\n', cfg.logDir, cfg
 function processSubject(fileEntry, subj, cfg)
     fprintf('\n=== Processing %s ===\n', subj);
     rng(cfg.seed, 'twister');
-    qc = struct('subject', subj, 'pipeline', cfg.version, 'excluded', false, 'exclusionReason', '', 'onsetCorrection', [], ...
+    qc = struct('subject', subj, 'pipeline', cfg.version, 'excluded', false, 'exclusionReason', '', ...
                 'badChannels', {{}}, 'badByFlat', {{}}, 'badByDeviation', {{}}, 'badByCorrelation', {{}}, ...
                 'roiInterpolated', {{}}, 'mastoidInterpolated', {{}}, 'icaRank', NaN, 'icaMode', '', 'saccades', [], ...
                 'icRemoved', [], 'icRemovedOcular', [], 'icRemovedOther', [], 'icDecisionSource', '', ...
                 'binLabels', {{}}, 'epochsPerBin', [], 'trialsPerBin', [], 'flags', {{}});
     try
-        %% Step 0: load, channel locations, optional onset correction
+        %% Step 0: load recording, channel locations, stimulus events
         fpath = fullfile(fileEntry.folder, fileEntry.name);
-        [~, acqName] = fileparts(fileEntry.name);
         EEG_raw = loadRecording(fpath, cfg);
         if ~isempty(cfg.chanlocFile)
             EEG_raw = pop_chanedit(EEG_raw, 'lookup', cfg.chanlocFile);
-        end
-        if cfg.onsetCorrection
-            [EEG_raw, onsetInfo] = applyOnsetCorrection(EEG_raw, cfg.onsetTbl, acqName, subj, cfg.stimCodes);
-        else
-            onsetInfo = struct('applied', false, 'meanShiftMs', 0, 'warning', '', 'shiftMs', []);
         end
         [stimLatMs, stimCodes] = stimOnsetsMs(EEG_raw, cfg.stimCodes);
         if numel(stimLatMs) < cfg.minStimEvents
             error('Only %d stimulus events found (cfg.minStimEvents = %d).', numel(stimLatMs), cfg.minStimEvents);
         end
-        if ~onsetInfo.applied, onsetInfo.shiftMs = zeros(1, numel(stimLatMs)); end
-        qc.onsetCorrection = rmfield(onsetInfo, 'shiftMs');
-        if ~isempty(onsetInfo.warning), qc.flags{end+1} = onsetInfo.warning; end
 
         %% Step 1: channel bookkeeping (keep bipolar EOG, drop other non-EEG)
         labels = upper({EEG_raw.chanlocs.labels});
@@ -491,7 +462,7 @@ function processSubject(fileEntry, subj, cfg)
         end
 
         %% Step 11: trial-level table and SME
-        [T, smeT, binCounts, epochCounts] = trialLevelOutputs(EEG_erp, EEG_lm, sac, stimLatMs, stimCodes, onsetInfo.shiftMs, subj, cfg);
+        [T, smeT, binCounts, epochCounts] = trialLevelOutputs(EEG_erp, EEG_lm, sac, stimLatMs, stimCodes, subj, cfg);
         writetable(T, fullfile(cfg.trialDir, [subj '_trials.csv']));
         writetable(smeT, fullfile(cfg.trialDir, [subj '_SME.csv']));
         qc.trialsPerBin = binCounts; qc.epochsPerBin = epochCounts;
@@ -511,8 +482,8 @@ function processSubject(fileEntry, subj, cfg)
         EEG_erp.ref = 'average';
         pop_saveset(EEG_erp, 'filename', [subj '_preprocessed.set'], 'filepath', cfg.outputDir);
         writeQC(cfg.logDir, qc);
-        fprintf('Finished %s: onset shift %.1f ms, %d bad chans [%s], saccades %s, ICA %s, %d ICs removed (%d ocular), trials/bin %s\n', ...
-            subj, onsetInfo.meanShiftMs, numel(badLabels), strjoin(badLabels, ' '), ...
+        fprintf('Finished %s: %d bad chans [%s], saccades %s, ICA %s, %d ICs removed (%d ocular), trials/bin %s\n', ...
+            subj, numel(badLabels), strjoin(badLabels, ' '), ...
             iff(hasEOG, sprintf('%d (%.2f/s)', qc.saccades.nSaccades, sacRate), 'n/a'), qc.icaMode, ...
             numel(removeIC), numel(qc.icRemovedOcular), mat2str(binCounts));
     catch ME
@@ -840,7 +811,7 @@ function [nBins, binLabels, evCounts] = binInfo(EEG)
 end
 
 %% ======================================================================
-function [T, smeT, binCounts, epochCounts] = trialLevelOutputs(EEG, EEGlm, sac, stimLatMs, stimCodes, shiftMs, subj, cfg)
+function [T, smeT, binCounts, epochCounts] = trialLevelOutputs(EEG, EEGlm, sac, stimLatMs, stimCodes, subj, cfg)
 % One row per epoch: trial index, event code, bin, rejection flag, optional saccade/blink counts per
 % window, optional single-trial ROI mean amplitudes (average reference; *_lm = linked mastoids).
 % SME per bin and measure = SD / sqrt(n accepted) (Luck et al., 2021).
@@ -859,7 +830,7 @@ function [T, smeT, binCounts, epochCounts] = trialLevelOutputs(EEG, EEGlm, sac, 
         onsetMs = stimLatMs(trial);
         r = struct('Subject', subj, 'epoch', e, 'trial', trial, 'eventCode', stimCodes(trial), ...
                    'bin', epochBin(e), 'condition', binLabels{epochBin(e)}, ...
-                   'shift_ms', shiftMs(trial), 'rejected', rej(e));
+                   'rejected', rej(e));
         if sac.valid
             for w = 1:size(cfg.sacWindows, 1)
                 a = cfg.sacWindows(w, 1); b = cfg.sacWindows(w, 2);
@@ -917,45 +888,6 @@ end
 
 function s = numlab(x)
     if x < 0, s = sprintf('m%d', -x); else, s = sprintf('%d', x); end
-end
-
-%% ======================================================================
-function [EEG, info] = applyOnsetCorrection(EEG, tbl, acqName, subj, stimCodes)
-% Shift each stimulus-onset event later by shift_ms. Rows are matched by recording file name
-% (fallback: subject ID) and verified against the event-code sequence; any mismatch raises an
-% error (subject excluded).
-    info = struct('applied', false, 'matchedBy', 'acq_file', 'tableSubject', '', 'nShifted', 0, 'meanShiftMs', NaN, ...
-                  'minShiftMs', NaN, 'maxShiftMs', NaN, 'source', '', 'warning', '', 'shiftMs', []);
-    typ = eventCodes(EEG);
-    stimIdx = stimEventIdx(EEG, stimCodes);
-    codes = typ(stimIdx);
-    rows = tbl(strcmp(tbl.acq_file, acqName), :);
-    if isempty(rows), rows = tbl(strcmp(tbl.Subject, subj), :); info.matchedBy = 'subject'; end
-    if isempty(rows), error('Onset correction: no rows for %s / %s.', acqName, subj); end
-    rows = sortrows(rows, 'trial');
-    if numel(codes) ~= height(rows) || any(codes(:) ~= rows.StimVal(:))
-        error('Onset correction: event sequence for %s does not match the table (EEG %d, table %d).', acqName, numel(codes), height(rows));
-    end
-    info.tableSubject = rows.Subject{1};
-    if ~strcmp(info.tableSubject, subj)
-        info.warning = sprintf('Correction-table subject (%s) differs from subject ID (%s); matched by event sequence.', info.tableSubject, subj);
-    end
-    shiftSamp = rows.shift_ms(:)' / 1000 * EEG.srate;
-    for k = 1:numel(stimIdx)
-        e = stimIdx(k);
-        EEG.event(e).latency = EEG.event(e).latency + shiftSamp(k);
-        if isfield(EEG.event, 'urevent') && ~isempty(EEG.event(e).urevent) && ~isempty(EEG.urevent)
-            u = EEG.event(e).urevent;
-            EEG.urevent(u).latency = EEG.urevent(u).latency + shiftSamp(k);
-        end
-    end
-    if any([EEG.event(stimIdx).latency] > EEG.pnts), error('Shifted event beyond end of recording (%s).', acqName); end
-    EEG = eeg_checkset(EEG, 'eventconsistency');
-    info.applied = true;
-    info.nShifted = numel(stimIdx); info.meanShiftMs = mean(rows.shift_ms);
-    info.minShiftMs = min(rows.shift_ms); info.maxShiftMs = max(rows.shift_ms);
-    if ismember('source', rows.Properties.VariableNames), info.source = rows.source{1}; end
-    info.shiftMs = rows.shift_ms(:)';
 end
 
 %% ======================================================================

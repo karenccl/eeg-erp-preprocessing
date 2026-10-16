@@ -9,13 +9,13 @@ Automated, reproducible preprocessing of event-related EEG in MATLAB (EEGLAB + E
 - **Ocular and artefact IC detection** combining ICLabel, EOG correlation and saccade/fixation variance ratio, with a manual override file.
 - **Two references from one ICA**: average reference (primary) and linked mastoids (derived from the same cleaned epochs and rejection flags).
 - **Trial-level output** with optional single-trial ROI amplitudes and standardized measurement error (SME) per bin.
-- **Graceful degradation**: no EOG channels, no mastoids, or no onset-correction table are handled by skipping the dependent steps and logging a QC flag.
+- **Graceful degradation**: no EOG channels or no mastoids are handled by skipping the dependent steps and logging a QC flag.
 - **Reproducible**: fixed random seed per subject; serial or parallel execution.
 
 ## Pipeline
 
 ```
-load → [onset correction] → bad-channel detection → two branches:
+load → bad-channel detection → two branches:
     ERP branch (0.1 Hz HP)        ICA branch (2–100 Hz)
     resample, interpolate, average reference (both)
 → bins (ERPLAB) → OPTICAT ICA → IC classification → remove ICs from ERP branch
