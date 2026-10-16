@@ -1,4 +1,4 @@
-%% EEG PREPROCESSING PIPELINE FOR ERP DATA (EEGLAB + ERPLAB)
+%% EEG PREPROCESSING PIPELINE FOR ERP DATA (EEGLAB + ERPLAB in MATLAB)
 % Automated, reproducible preprocessing of event-related EEG: one script, one ICA, two reference
 % schemes. Every subject gets a QC log, IC-review figures and single-trial/SME tables.
 %
