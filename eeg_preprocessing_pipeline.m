@@ -17,7 +17,7 @@
 %        ERP branch          cfg.hpERP high-pass (0.1 Hz)
 %        ICA training branch cfg.hpICA - cfg.lpICA band-pass (2-100 Hz)
 %   5  ERPLAB event list and bins (Binlister bin descriptor file or an existing event list).
-%   6  OPTICAT-style ICA (Dimigen, 2020): extended infomax on stimulus-locked epochs, plus
+%   6  OPTICAT-style ICA: extended infomax on stimulus-locked epochs, plus
 %      overweighted saccade-onset segments when saccade detection is valid. Fixed random seed.
 %   7  IC classification (ICLabel + EOG correlation + saccade/fixation variance ratio), with a
 %      manual override file <subj>_ic_decisions.csv.
@@ -27,7 +27,7 @@
 %   10 Linked-mastoid copy of the cleaned epochs (same ICA, same rejection flags), so the two
 %      references differ only in the reference. Skipped if the mastoid channels are absent.
 %   11 Trial-level table (optional saccade counts, optional single-trial ROI amplitudes) and
-%      standardized measurement error (SME; Luck et al., 2021) per bin.
+%      standardized measurement error (SME) per bin.
 %   12 Averaging (accepted trials only) and saving.
 %
 % DESIGN NOTES
@@ -111,7 +111,7 @@ cfg.reuseICA = true;     % reuse <subj>_ica.mat if channels and bad channels are
 cfg.fsNew    = 250;
 cfg.hpERP    = 0.1;      % Hz, ERP branch
 cfg.lpFinal  = 30;       % Hz, ERP branch, applied before epoching
-cfg.hpICA    = 2;        % Hz, ICA training branch (Dimigen, 2020)
+cfg.hpICA    = 2;        % Hz, ICA training branch
 cfg.lpICA    = 100;      % Hz, keeps the saccadic spike potential in the training data
 cfg.hpDetect = 1;        % Hz, copy used for bad-channel detection
 
@@ -562,7 +562,7 @@ function bc = detectBadChannels(EEG_eeg, cfg)
         X = double(Eg.data);
         if pass == 1, X = X - median(X, 1); else, X = X - mean(X, 1); end
         Eg.data = single(X);
-        % Robust deviation (PREP; Bigdely-Shamlo et al., 2015): channel amplitude = 0.7413 * IQR,
+        % Robust deviation (PREP-style): channel amplitude = 0.7413 * IQR,
         % robust z across channels. IQR ignores sparse blinks/EMG bursts, so frontal blink channels
         % and channels with occasional temporalis bursts are not flagged (kurtosis flags both).
         amp = 0.7413 * rowIQR(X);
@@ -726,7 +726,7 @@ end
 
 %% ======================================================================
 function vr = ocularMetrics(act, sac, srate, taskSpan, sacOK)
-% Saccade/fixation variance ratio per IC (Ploechl et al., 2012); NaN if saccade detection failed.
+% Saccade/fixation variance ratio per IC; NaN if saccade detection failed.
     nIC = size(act, 1); vr = nan(1, nIC);
     if ~sacOK, return; end
     toS = @(ms) max(1, min(size(act, 2), round(ms / 1000 * srate) + 1));
@@ -801,7 +801,7 @@ end
 function [T, smeT, binCounts, epochCounts] = trialLevelOutputs(EEG, EEGlm, sac, stimLatMs, stimCodes, subj, cfg)
 % One row per epoch: trial index, event code, bin, rejection flag, optional saccade/blink counts per
 % window, optional single-trial ROI mean amplitudes (average reference; *_lm = linked mastoids).
-% SME per bin and measure = SD / sqrt(n accepted) (Luck et al., 2021).
+% SME per bin and measure = SD / sqrt(n accepted).
     nE = EEG.trials; t = EEG.times;
     labs = upper({EEG.chanlocs.labels});
     hasLM = ~isempty(EEGlm);

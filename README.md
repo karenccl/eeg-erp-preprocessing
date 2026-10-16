@@ -5,7 +5,7 @@ Automated, reproducible preprocessing of event-related EEG in MATLAB (EEGLAB + E
 ## Features
 
 - **Bad-channel detection after re-referencing** (flatline, robust deviation, RANSAC correlation; PREP-style), so electrodes next to the online reference are not flagged wrongly.
-- **OPTICAT-style ICA** (Dimigen, 2020): training on a 2 Hz high-passed branch with overweighted saccade-onset segments; weights applied to a 0.1 Hz ERP branch.
+- **OPTICAT-style ICA**: training on a 2 Hz high-passed branch with overweighted saccade-onset segments; weights applied to a 0.1 Hz ERP branch.
 - **Ocular and artefact IC detection** combining ICLabel, EOG correlation and saccade/fixation variance ratio, with a manual override file.
 - **Two references from one ICA**: average reference (primary) and linked mastoids (derived from the same cleaned epochs and rejection flags).
 - **Trial-level output** with optional single-trial ROI amplitudes and standardized measurement error (SME) per bin.
