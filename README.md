@@ -60,4 +60,4 @@ After reviewing `ic_review/<subj>_IC_topos.png`, create `ic_review/<subj>_ic_dec
 
 ## License
 
-MIT. Author: Karen C.L. Chan.
+MIT. 
