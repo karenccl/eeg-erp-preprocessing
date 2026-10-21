@@ -1,4 +1,4 @@
-%% GENERIC EEG/ERP PREPROCESSING PIPELINE (EEGLAB + ERPLAB)
+%% EEG/ERP PREPROCESSING PIPELINE (EEGLAB + ERPLAB)
 %
 % Dual-branch ICA pipeline for event-related EEG data. ICA is trained on a
 % 1 Hz high-passed copy of the data (better decomposition) and the solution
